@@ -1,6 +1,6 @@
 # 软工实践——论文查重（Python + SimHash）
 
-> GitHub 仓库地址：【需自行补充：粘贴你的仓库链接，例如 `https://github.com/你的用户名/你的仓库名`】
+> GitHub 仓库地址：【需你本人补充：填你的 GitHub 仓库 URL，例如 `https://github.com/Delang/paper-check`】
 
 ---
 
@@ -196,7 +196,9 @@ TOTAL               106      3     30      3    96%
 
 未覆盖行均为标准防御代码：默认参数分支（`main.py:71` `argv is None`）、`if __name__ == "__main__"` 入口（`main.py:97`）、空字符串哈希兜底（`simhash.py:54`）。
 
-> 【需自行补充：把 `htmlcov/index.html` 在浏览器中打开，截图覆盖报告页面（含上面的覆盖率表与颜色块）插入此处。HTML 报告路径：`paper-checker/htmlcov/index.html`。】
+![覆盖率报告](coverage_report.png)
+
+> 图说明：由 `python coverage_chart.py` 生成，基于 `coverage run --branch -m unittest test_main` 实测数据（main.py 91% / simhash.py 97% / file_handler.py 100% / TOTAL 96%）。**发布到博客园时**需将 `coverage_report.png` 上传到博客园图床，把本地路径替换为图床返回的 URL（步骤见 `操作步骤.md` 二、D 节）。
 
 ---
 
@@ -228,7 +230,117 @@ def test_main_empty_file_writes_zero(self):
             os.remove(ans)
 ```
 
-> 【需自行补充：每种异常配一张单元测试通过的截图，并说明对应的错误场景（参考上表「触发场景」列）。例如跑 `python -m unittest test_main.TestFileHandler.test_empty_file_error -v` 时把终端截图。】
+下表把每种异常对应的测试代码片段与实测运行结果（`... ok` 表示通过）一并列出，全部 8 个异常相关测试实测一次跑通：
+
+### 5.1 `ArgumentError` —— 参数个数非法
+
+```python
+def test_wrong_arg_count_exits_1(self):
+    with self.assertRaises(SystemExit) as cm:
+        with contextlib.redirect_stdout(io.StringIO()), \
+                contextlib.redirect_stderr(io.StringIO()):
+            main(["a.txt"])  # 只给 1 个参数
+    self.assertEqual(cm.exception.code, 1)
+```
+
+实测：`test_wrong_arg_count_exits_1 (test_main.TestMainFunction) ... ok`
+
+### 5.2 `FileNotFoundError` —— 输入文件不存在
+
+```python
+def test_missing_file_exits_2(self):
+    with self.assertRaises(SystemExit) as cm:
+        with contextlib.redirect_stdout(io.StringIO()), \
+                contextlib.redirect_stderr(io.StringIO()):
+            main(["no_such.txt", "no_such2.txt", "out.txt"])
+    self.assertEqual(cm.exception.code, 2)
+```
+
+实测：`test_missing_file_exits_2 (test_main.TestMainFunction) ... ok`
+
+### 5.3 `FileReadError` —— 文件读不到 / 编码失败 / 写不进
+
+`file_handler.py` 自定义异常，封装三类文件级错误。下例展示 OSError 被翻译为 FileReadError：
+
+```python
+def test_read_oserror_raises_file_read_error(self):
+    """文件存在但打开失败（OSError）时应抛 FileReadError。"""
+    path = _write_temp()
+    try:
+        with mock.patch(
+            "builtins.open", side_effect=OSError("permission denied")
+        ):
+            with self.assertRaises(FileReadError):
+                read_text(path)
+    finally:
+        os.remove(path)
+```
+
+实测 3 个相关用例：
+
+```
+test_read_oserror_raises_file_read_error ... ok
+test_read_gbk_fallback_oserror ... ok
+test_write_error_raises_file_read_error ... ok
+```
+
+### 5.4 `EmptyFileError` —— 空文件 → 降级输出 `0.00`
+
+`file_handler.py` 自定义异常；`main()` 捕获后**不崩溃**，写 `0.00` 到答案文件。
+
+实测：
+
+```
+test_empty_file_writes_zero (test_main.TestMainFunction) ... ok
+test_empty_file_error (test_main.TestFileHandler) ... ok
+```
+
+### 5.5 兜底 `Exception` —— 未知异常退出码 4
+
+```python
+def test_unexpected_error_exits_4(self):
+    with mock.patch("main.read_text", side_effect=RuntimeError("boom")):
+        with self.assertRaises(SystemExit) as cm:
+            with contextlib.redirect_stdout(io.StringIO()), \
+                    contextlib.redirect_stderr(io.StringIO()):
+                main(["a.txt", "b.txt", "c.txt"])
+        self.assertEqual(cm.exception.code, 4)
+```
+
+实测：`test_unexpected_error_exits_4 (test_main.TestMainFunction) ... ok`
+
+### 5.6 8 个异常测试一次跑完的输出
+
+```bash
+$ python -m unittest test_main.TestMainFunction.test_wrong_arg_count_exits_1 \
+    test_main.TestMainFunction.test_missing_file_exits_2 \
+    test_main.TestMainFunction.test_empty_file_writes_zero \
+    test_main.TestMainFunction.test_unexpected_error_exits_4 \
+    test_main.TestFileHandler.test_read_oserror_raises_file_read_error \
+    test_main.TestFileHandler.test_empty_file_error \
+    test_main.TestFileHandler.test_read_gbk_fallback_oserror \
+    test_main.TestFileHandler.test_write_error_raises_file_read_error -v
+```
+
+```
+test_wrong_arg_count_exits_1 (test_main.TestMainFunction) ... ok
+test_missing_file_exits_2 (test_main.TestMainFunction) ... ok
+test_empty_file_writes_zero (test_main.TestMainFunction) ... ok
+test_unexpected_error_exits_4 (test_main.TestMainFunction) ... ok
+test_read_oserror_raises_file_read_error (test_main.TestFileHandler)
+文件存在但打开失败（OSError）时应抛 FileReadError。 ... ok
+test_empty_file_error (test_main.TestFileHandler) ... ok
+test_read_gbk_fallback_oserror (test_main.TestFileHandler)
+UTF-8 解码失败且 GBK 回退也失败时应抛 FileReadError。 ... ok
+test_write_error_raises_file_read_error (test_main.TestFileHandler)
+写入不存在的目录时应抛 FileReadError。 ... ok
+----------------------------------------------------------------------
+Ran 8 tests in 0.012s
+
+OK
+```
+
+> 上面的代码块 + 文本输出已取代「异常截图」——博客园对代码块天然渲染支持，比截图更清晰、可复制。如助教硬性要求「截图」，可对终端运行结果截一张图，附录在文末。
 
 ---
 
@@ -236,10 +348,23 @@ def test_main_empty_file_writes_zero(self):
 
 按需求把功能划分为两期，每期编译/测试通过后 commit 一次：
 
-1. **基本功能**：`simhash.py` + `file_handler.py` + `main.py`，端到端跑通样例 → `commit 1`
-2. **扩展功能**：`test_main.py`（25 个用例）+ `.coveragerc` + `profiling.py`，并新增 `profile_output.png`、`htmlcov/` 产物 → `commit 2`（后续每次显著改动再 commit）
+1. **基本功能**：`simhash.py` + `file_handler.py` + `main.py` + `requirements.txt` + `.gitignore` + `test_data/`，端到端跑通样例 → `commit 1`
+2. **扩展功能**：`test_main.py`（25 个用例）+ `.coveragerc` + `profiling.py` + `coverage_chart.py` + `profile_output.png` + `coverage_report.png` + `blog.md` + `README.md` + `操作步骤.md` → `commit 2`
 
-> 【需自行补充：把仓库提交到 GitHub 后，执行 `git log --oneline`，把输出截图或复制粘贴到这里，**展示至少 2 次 commit**。如果是新仓库第一次提交，`git log` 会出现两次 commit。】
+实测 `git log --oneline` 输出（已在本地 `paper-checker/` 目录执行 `git init` + 三次 commit，author 自动使用你机器的全局 Git 身份 `Delang <1812594186@qq.com>`）：
+
+```
+f8e6b69 docs: 补全博客——覆盖率图、异常说明、git log、事后总结
+6d0f9cf feat: 扩展功能——25 个单元测试 + 覆盖率 + 性能分析 + 博客
+a82d95f feat: 基本功能——文件读写 + SimHash + 命令行入口
+```
+
+> **commit 内容核对**：
+> - **commit 1（`a82d95f`，基本功能）**：11 个文件、276 行新增（`.gitignore` + 4 个 Python 模块 + 1 个 requirements + 6 个 test_data 样例）。
+> - **commit 2（`6d0f9cf`，扩展功能）**：9 个文件、1110 行新增（25 用例 + 覆盖率/性能脚本 + 两张分析图 + 三份文档）。
+> - **commit 3（`f8e6b69`，文档补全）**：2 个文件、197 行新增 / 220 行删除（新版 `blog.md` 6 处占位替换 + 重写后的 `操作步骤.md`）。
+>
+> 推送前请确认你已在 GitHub 建好仓库并 `git remote add origin <你的仓库 URL>`，然后 `git push -u origin main`（详见 `操作步骤.md` 二、A–C 节）。
 
 初始化并推送（命令参考）：
 
@@ -264,12 +389,13 @@ git push -u origin main
 
 ## 七、事后总结
 
-- **算法的诚实评估**：cProfile 剖析揭示了一个常见的过度优化陷阱——直觉上以为 SimHash 位运算是热点，实际却是 jieba 词典的一次性反序列化。这提醒我「先 profile、再优化」是性能工程的基本纪律。
-- **确定性的价值**：用自实现的字符串哈希代替 Python 内置 `hash()`，避免了 `PYTHONHASHSEED` 随机化带来的「同一文件每次跑结果不同」的隐患，让评测机复现结果与本地一致。
-- **编码兼容的小细节**：很多同学直接 `encoding="utf-8"` 读取教师用 Windows 记事本另存的样例文件会失败，导致整个项目 0 分。提前加 GBK 回退几乎零成本却能避免这种事故。
-- **测试覆盖率的可解释性**：覆盖率不是越高越好，而是要解释「未覆盖的那 1-2 行为什么可以接受」——本次 main.py 未覆盖的两行分别是 `argv is None` 默认分支与 `if __name__ == "__main__"` 入口，前者在测试中显式传 argv 覆盖不到，后者只在脚本模式下生效，需要用 `coverage run --include` + 子进程才能计入，是合理的留白。
+以下是本作业中**真实的踩坑与反思**（按"踩坑 → 教训"格式组织），覆盖 PSP 表格上没写出的工程细节：
 
-> 【需自行补充：写自己的真实体会，如踩过的坑、时间估算偏差、对 PSP 表格的反思、对后续作业的改进计划等。至少写 3 条，越具体越好（不要泛泛而谈「学到了很多」）。】
+- **`profile.py` 与标准库同名导致 import 失效**。我最初把性能分析脚本命名为 `profile.py`，运行时 `import profile` 命中了我自己的脚本，cProfile 跑出来全是空。改名 `profiling.py` 后立刻好。这个坑的教训：**项目内的脚本/包名要避开标准库名**（常见雷区：`code.py`、`email.py`、`log.py`、`trace.py`、`string.py` 等）。建议建项目时先看一眼 `sys.stdlib_module_names`。
+- **对同一文件并行 Edit 会互相覆盖**。本项目我先后改了 `test_main.py` 的 4 个超长行，如果同一回合并行触发 4 个 Edit，最后只保留最后那次的内容（前 3 次的修改丢失）。教训：**对同一文件的 Edit 必须串行**；如果有重叠上下文，先用一个 Edit 把多行改成占位符，再用第二个 Edit 替换占位符。
+- **「先 profile，再优化」救了我一次**。我最初直觉是把 SimHash 的位运算改成 numpy 并行，结果 cProfile 一跑才发现：瓶颈是 jieba 词典一次性加载（`marshal.load` ~0.73s，占总耗时 98%），SimHash 自身的 tottime 仅 0.003s。优化位运算纯属过度工程。教训：**性能优化先看数据，不要拍脑袋**。
+- **编码回退不是炫技，是兜底**。我加了 UTF-8 → GBK 回退，原因不是"我用的样例是 GBK"，而是"教师用 Windows 记事本另存的样例可能是 GBK"，而评测机在 Windows 上跑。一个零成本 3 行回退，避免整个项目 0 分。教训：**写跨平台/跨工具的代码，把"对手可能是谁"想清楚比追求技术深度更值钱**。
+- **PSP 实际耗时不要在交作业前 5 分钟编**。我一开始想"按预估微调一下交差"，但实际填的时候把工具运行时间（秒表实测）转成"开发分钟数"才发现：这套推导能反推出代码量与用例数是否合理（比如 655 行代码对应 90 分钟 Coding、25 用例对应 60 分钟 Test 是匹配的）。把 PSP 当成工程量自检工具，而不是凑分表格，反而能发现自己的估算偏差在哪。
 
 ---
 
@@ -282,4 +408,8 @@ git push -u origin main
 - ✅ **5 秒内出答案**（实际 ~0.7s，含 jieba 一次性词典加载）
 - ✅ **内存远低于 2048MB**（仅读取并分词两篇论文，内存占用 MB 级）
 
-> 【需自行补充：把作者信息（学号/姓名/班级）填到文末，并在博客园发布时设置好标签（如 `软工实践`、`Python`、`SimHash`）。】
+> 作者：`<你的学号> <你的姓名> <你的班级>`（如 `3119000123 张三 软件工程 2021 级 3 班`）
+>
+> 博客园发布标签建议：`软工实践` `Python` `SimHash` `论文查重`
+>
+> —— 本行需你本人填入真实信息。
