@@ -354,7 +354,7 @@ OK
 实测 `git log --oneline` 输出（已在本地 `paper-checker/` 目录执行 `git init` + 三次 commit，author 自动使用你机器的全局 Git 身份 `Delang <1812594186@qq.com>`）：
 
 ```
-f8e6b69 docs: 补全博客——覆盖率图、异常说明、git log、事后总结
+d6b9593 docs: 补全博客——覆盖率图、异常说明、git log、事后总结
 6d0f9cf feat: 扩展功能——25 个单元测试 + 覆盖率 + 性能分析 + 博客
 a82d95f feat: 基本功能——文件读写 + SimHash + 命令行入口
 ```
@@ -362,7 +362,7 @@ a82d95f feat: 基本功能——文件读写 + SimHash + 命令行入口
 > **commit 内容核对**：
 > - **commit 1（`a82d95f`，基本功能）**：11 个文件、276 行新增（`.gitignore` + 4 个 Python 模块 + 1 个 requirements + 6 个 test_data 样例）。
 > - **commit 2（`6d0f9cf`，扩展功能）**：9 个文件、1110 行新增（25 用例 + 覆盖率/性能脚本 + 两张分析图 + 三份文档）。
-> - **commit 3（`f8e6b69`，文档补全）**：2 个文件、197 行新增 / 220 行删除（新版 `blog.md` 6 处占位替换 + 重写后的 `操作步骤.md`）。
+> - **commit 3（`d6b9593`，文档补全，amend 自上一版）**：2 个文件、199 行新增 / 220 行删除（新版 `blog.md` 6 处占位替换 + 重写后的 `操作步骤.md`）。
 >
 > 推送前请确认你已在 GitHub 建好仓库并 `git remote add origin <你的仓库 URL>`，然后 `git push -u origin main`（详见 `操作步骤.md` 二、A–C 节）。
 
