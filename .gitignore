@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+*.log
+.idea/
+.vscode/
+.coverage
+coverage.xml
+htmlcov/
+profile.prof
+test_data/ans*.txt
+env_check.txt
+git_log.txt
