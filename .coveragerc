@@ -1,0 +1,11 @@
+[run]
+# 只统计项目源码，排除第三方/环境注入的文件与测试代码
+source =
+    simhash
+    file_handler
+    main
+
+[report]
+# 报告里排除测试文件本身
+omit =
+    test_main.py
