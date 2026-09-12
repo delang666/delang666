@@ -10,6 +10,6 @@ venv/
 coverage.xml
 htmlcov/
 profile.prof
-test_data/ans*.txt
+3124004133/test_data/ans*.txt
 env_check.txt
 git_log.txt
