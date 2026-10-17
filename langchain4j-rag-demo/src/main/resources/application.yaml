@@ -1,0 +1,23 @@
+spring:
+  application:
+    name: langchain4j-rag-demo
+  # session ??
+  session:
+    store-type: redis
+    # session 30 ???
+    timeout: 2592000
+  profiles:
+    active: prod
+server:
+  port: 8088
+  servlet:
+    context-path: /api
+    # cookie 30 ???
+    session:
+      cookie:
+        max-age: 2592000
+# springdoc-openapi
+springdoc:
+  group-configs:
+    - group: 'default'
+      packages-to-scan: com.dl.langchain4jragdemo.controller

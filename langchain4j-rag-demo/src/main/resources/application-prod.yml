@@ -1,0 +1,100 @@
+# 线上配置文件
+# 安全说明：所有敏感信息统一通过环境变量注入，请勿在仓库中提交真实密钥
+spring:
+  # mysql
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/${MYSQL_DATABASE:langchian4j-rag-demo}
+    username: ${MYSQL_USERNAME:root}
+    password: ${MYSQL_PASSWORD:}
+  # redis
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      database: ${REDIS_DATABASE:1}
+      password: ${REDIS_PASSWORD:}
+      ttl: 3600
+# mybatis
+mybatis:
+  type-handlers-package: com.dl.langchain4jragdemo.typehandler
+  configuration:
+    map-underscore-to-camel-case: true
+
+# AI
+langchain4j:
+  community:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${EMBEDDING_REDIS_PORT:6380}
+      database: 0
+      user: default
+      password: ${REDIS_PASSWORD:}
+  open-ai:
+    chat-model:
+      base-url: ${DEEPSEEK_BASE_URL:https://api.deepseek.com}
+      api-key: ${DEEPSEEK_API_KEY:}
+      model-name: deepseek-chat
+      max-tokens: 8192
+      log-requests: false
+      log-responses: false
+    streaming-chat-model:
+      base-url: ${DEEPSEEK_BASE_URL:https://api.deepseek.com}
+      api-key: ${DEEPSEEK_API_KEY:}
+      model-name: deepseek-chat
+      max-tokens: 8192
+      log-requests: false
+      log-responses: false
+    # 推理 AI 模型配置（用于复杂的推理任务）
+    reasoning-streaming-chat-model:
+      base-url: ${DEEPSEEK_BASE_URL:https://api.deepseek.com}
+      api-key: ${DEEPSEEK_API_KEY:}
+      model-name: deepseek-chat
+      max-tokens: 8192
+      temperature: 0.1
+      log-requests: false
+      log-responses: false
+    # 智能路由 AI 模型配置（用于简单的分类任务）
+    routing-chat-model:
+      base-url: ${DASHSCOPE_BASE_URL:https://dashscope.aliyuncs.com/compatible-mode/v1}
+      api-key: ${DASHSCOPE_API_KEY:}
+      model-name: qwen-turbo
+      log-requests: false
+      log-responses: false
+      max-tokens: 100
+      # 配置向量模型
+    embedding-model:
+      base-url: ${DASHSCOPE_BASE_URL:https://dashscope.aliyuncs.com/compatible-mode/v1}
+      api-key: ${DASHSCOPE_API_KEY:}
+      model-name: text-embedding-v3
+      log-requests: true
+      log-responses: true
+      max-segments-per-batch: 10 # ← 新增：限制每批最多 10 条，匹配 DashScope API 限制
+# 添加 COS 对象存储配置（需要从腾讯云获取）
+cos:
+  client:
+    host: ${COS_HOST:}
+    secretId: ${COS_SECRET_ID:}
+    secretKey: ${COS_SECRET_KEY:}
+    region: ${COS_REGION:ap-guangzhou}
+    bucket: ${COS_BUCKET:}
+# Pexels 图片搜索配置
+pexels:
+  api-key: ${PEXELS_API_KEY:}
+# 阿里云 DashScope 配置
+dashscope:
+  api-key: ${DASHSCOPE_API_KEY:}
+  image-model: wan2.2-t2i-flash
+# 生产环境关闭日志
+mybatis-flex:
+  configuration:
+    log-impl: ''
+# 接口文档配置
+knife4j:
+  basic:
+    enable: true
+    username: ${KNIFE4J_USERNAME:root}
+    password: ${KNIFE4J_PASSWORD:}
+# 部署路径
+code:
+  deploy-host: ${DEPLOY_HOST:http://localhost:8080/dist}
